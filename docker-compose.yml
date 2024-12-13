@@ -1,0 +1,10 @@
+services:
+  github-artifact-proxy:
+    image: ghcr.io/yourusername/github-artifact-proxy:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+    environment:
+      - TZ=UTC
+    restart: unless-stopped

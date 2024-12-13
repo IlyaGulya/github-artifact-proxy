@@ -1,3 +1,5 @@
 result
 config.yml
 .download/
+.idea
+prompt.txt

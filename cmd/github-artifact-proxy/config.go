@@ -4,10 +4,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v60/github"
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	envTokenPrefix = "GITHUB_TOKEN_"
 )
 
 type Run struct {
@@ -57,6 +62,24 @@ func (t *Target) Unlock() {
 	<-t.lockChan
 }
 
+// loadTokensFromEnv loads tokens from environment variables in the format GITHUB_TOKEN_[ID]
+func loadTokensFromEnv() map[string]string {
+	tokens := make(map[string]string)
+	for _, env := range os.Environ() {
+		if !strings.HasPrefix(env, envTokenPrefix) {
+			continue
+		}
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		id := strings.ToLower(strings.TrimPrefix(parts[0], envTokenPrefix))
+		tokens[id] = parts[1]
+	}
+	return tokens
+}
+
 func LoadConfig(filename string) (*Config, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -69,6 +92,17 @@ func LoadConfig(filename string) (*Config, error) {
 		return nil, err
 	}
 
+	// Initialize tokens map if nil
+	if config.Tokens == nil {
+		config.Tokens = make(map[string]string)
+	}
+
+	// Load and merge tokens from environment variables
+	envTokens := loadTokensFromEnv()
+	for id, token := range envTokens {
+		config.Tokens[id] = token
+	}
+
 	for id, target := range config.Targets {
 		target.lockChan = make(chan struct{}, 1)
 		target.runCache = make(map[string]*Run)
@@ -78,7 +112,7 @@ func LoadConfig(filename string) (*Config, error) {
 		}
 
 		if _, ok := config.Tokens[*target.Token]; !ok {
-			return nil, fmt.Errorf("token with id '%s' not found in tokens list", *target.Token)
+			return nil, fmt.Errorf("token with id '%s' not found in tokens list or environment variables", *target.Token)
 		}
 	}
 
