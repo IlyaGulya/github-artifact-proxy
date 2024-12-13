@@ -59,7 +59,8 @@ jobs:
       - name: Check image
         if: github.event_name != 'pull_request'
         run: |
-          docker buildx imagetools inspect ghcr.io/${{ github.repository }}:sha-${GITHUB_SHA::7}
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          docker buildx imagetools inspect ghcr.io/${REPO_LOWER}:sha-${GITHUB_SHA::7}
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
